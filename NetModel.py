@@ -42,9 +42,9 @@ class NetModel(nn.Module):
             depthwise_separable_conv(in_channel, in_channel, 1, stride),
             nn.ReLU(),
             nn.BatchNorm2d(in_channel),
-            depthwise_separable_conv(in_channel, in_channel, 1, stride),
+            depthwise_separable_conv(in_channel, out_channel, 1, stride),
             nn.ReLU(),
-            nn.BatchNorm2d(in_channel),
+            nn.BatchNorm2d(out_channel),
             # nn.ConvTranspose2d(in_channels=in_channel, out_channels=out_channel, kernel_size=kernel_size, stride=stride)
             # nn.MaxUnpool2d(2)
             # F.interpolate(input=out_channel, scale_factor=2, mode='nearest')
@@ -97,28 +97,39 @@ class NetModel(nn.Module):
     def forward(self, x):
         ind = []
         id=0
+        print(x.shape)
 
         x = self.in_layer(x)
-        x, xx = F.max_pool2d(x, kernel_size=2, stride=2, return_indices=True)
+        x, xx = F.max_pool2d(x, kernel_size=2, return_indices=True)
+        print(x.shape)
         # print(indices)
         ind.append(xx)
-        for i in range(self.num_layers-1):
-            x = self.encoder_block[i](x)
-            # if(i != len(self.encoder_block)-1):
+        for layer in self.encoder_block:
+            x = layer(x)
+            # if(id != len(self.encoder_block)-1):
                 # print('pool')
-            x, indices = F.max_pool2d(x, kernel_size=2, stride=2, return_indices=True)
+            x, indices = F.max_pool2d(x, kernel_size=2, return_indices=True)
                 # print(indices)
                 # print(type(indices))
                 # print(id)
             ind.append(indices)
-                # id+=1
+                # print(indices.shape)
+            id+=1
+            print(indices.shape)
         
-        id=1
+        id=0
         for layer, indices in zip(self.decoder_block, reversed(ind)):
+            print('{} : {}'.format(x.shape, indices.shape))
             x = layer(x)
+            x = F.upsample(x, scale_factor=2, mode='bilinear')
+                        # x = F.max_unpool2d(x, indices, kernel_size=3)
 
+            # if x.shape != indices.shape: 
+                # print('doff')
+                # continuec
+            # print('jalan')
             # if id != len(self.decoder_block):
-            x = F.max_unpool2d(x, indices, kernel_size=2, stride=2)
+            id+=1
 
         # e_block = self.encoder_block(in_layer)
         # d_block = self.decoder_block(e_block)
